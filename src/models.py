@@ -58,8 +58,7 @@ class StoryBrief(BaseModel):
     situation: str
     context_and_analysis: str
     implications: str
-    watch_items: list[str] = Field(default_factory=list)
-    # Source data for Q&A grounding
+    # Source data for citations and Q&A grounding
     source_articles: list[SourceRef] = Field(default_factory=list)
     think_tank_refs: list[SourceRef] = Field(default_factory=list)
     deep_context: str = ""  # Concatenated analysis for Q&A grounding

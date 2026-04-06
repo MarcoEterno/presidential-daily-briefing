@@ -15,7 +15,13 @@ logger = logging.getLogger(__name__)
 REPORT_SYSTEM_PROMPT = """\
 You are the editor of the Presidential Daily Briefing. \
 Write in an authoritative, concise style. Every sentence should convey actionable intelligence. \
-No hedging, no caveats. Be specific with names, dates, and figures."""
+No hedging, no caveats. Be specific with names, dates, and figures.
+
+CITATION RULES: You MUST cite sources inline using [N] notation where N is the 1-based index \
+from the SOURCES list provided with each brief. Every factual claim (numbers, dates, quotes, \
+events) must have at least one citation. Place the citation immediately after the fact it supports. \
+Example: "Brent crude surged 59% [1] while Iran maintained control of the Strait [2][3]." \
+Use the source indices exactly as numbered in each brief's source list."""
 
 REPORT_USER_PROMPT = """\
 Compile the following intelligence briefs into a cohesive daily briefing.
@@ -27,14 +33,13 @@ INDIVIDUAL BRIEFS:
 
 Generate a response in JSON format ONLY (no markdown code fences):
 {{
-  "executive_summary": "One paragraph (4-6 sentences). Start with the single most important development. Note interconnections between stories.",
+  "executive_summary": "One paragraph (4-6 sentences). Start with the single most important development. Note interconnections between stories. Include [N] citations.",
   "stories": [
     {{
       "headline": "Concise, factual headline",
-      "situation": "What happened and current status (2-3 sentences)",
-      "context_and_analysis": "Historical context, economic drivers, and strategic significance (3-4 sentences)",
-      "implications": "What this means for international order and key actors (2-3 sentences)",
-      "watch_items": ["What to monitor in next 48-72h", "Key variable or decision point", "Potential escalation trigger"]
+      "situation": "What happened and current status (2-3 sentences). Include [N] citations for every fact.",
+      "context_and_analysis": "Historical context, economic drivers, and strategic significance (3-4 sentences). Include [N] citations.",
+      "implications": "What this means for international order and key actors (2-3 sentences). Include [N] citations."
     }}
   ],
   "looking_ahead": [
@@ -44,13 +49,29 @@ Generate a response in JSON format ONLY (no markdown code fences):
   ]
 }}
 
+IMPORTANT: Every factual claim MUST have an inline [N] citation referencing the source index from that brief's SOURCES list.
+
 Produce {story_count} story briefs, ordered by importance. \
 The executive summary should synthesize themes across stories, not merely list them."""
+
+
+def _build_source_list(story: EnrichedStory) -> list[dict]:
+    """Build a numbered source list combining articles and think tank refs."""
+    sources = []
+    for a in story.articles[:5]:
+        sources.append({"title": a.title, "url": a.url, "source_name": a.source_name})
+    for r in story.think_tank_references:
+        sources.append({"title": r.title, "url": r.url, "source_name": r.source_name})
+    return sources
 
 
 def _format_briefs(stories: list[EnrichedStory]) -> str:
     parts = []
     for i, story in enumerate(stories, 1):
+        sources = _build_source_list(story)
+        source_lines = "\n".join(
+            f"  [{j}] {s['source_name']}: {s['title']}" for j, s in enumerate(sources, 1)
+        )
         parts.append(f"""--- BRIEF {i} (Category: {story.category}, Importance: {story.importance_score}) ---
 Summary: {story.initial_summary}
 Situation: {story.situation}
@@ -58,8 +79,9 @@ Historical Context: {story.historical_context}
 Economic Factors: {story.economic_factors}
 Strategic Implications: {story.strategic_implications}
 Outlook: {story.outlook}
-Sources: {', '.join(a.source_name for a in story.articles[:3])}
-Think Tank References: {', '.join(r.source_name + ': ' + r.title for r in story.think_tank_references[:2]) or 'None'}""")
+
+SOURCES (cite these inline using [N]):
+{source_lines}""")
     return "\n\n".join(parts)
 
 
@@ -144,11 +166,7 @@ def _render_text(briefing: Briefing) -> str:
             "IMPLICATIONS:",
             story.implications,
             "",
-            "WATCH ITEMS:",
         ])
-        for item in story.watch_items:
-            lines.append(f"  - {item}")
-        lines.append("")
 
     if briefing.looking_ahead:
         lines.extend([
@@ -197,7 +215,6 @@ async def generate_briefing(enriched_stories: list[EnrichedStory]) -> Briefing:
             situation=s.get("situation", ""),
             context_and_analysis=s.get("context_and_analysis", ""),
             implications=s.get("implications", ""),
-            watch_items=s.get("watch_items", []),
             source_articles=source_articles,
             think_tank_refs=think_tank_refs,
             deep_context=deep_context,

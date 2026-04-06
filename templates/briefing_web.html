@@ -3,149 +3,239 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Presidential Daily Briefing — {{ briefing.date }}</title>
+    <title>Daily Briefing — {{ briefing.date }}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg: #fafaf8;
+            --surface: #ffffff;
+            --text: #1d1d1f;
+            --text-secondary: #6e6e73;
+            --accent: #2563eb;
+            --accent-light: #eff6ff;
+            --border: #e5e5e5;
+            --border-light: #f0f0f0;
+            --tag-conflict: #dc2626;
+            --tag-diplomacy: #2563eb;
+            --tag-economic: #059669;
+            --tag-political: #7c3aed;
+            --tag-security: #d97706;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Georgia', 'Times New Roman', serif;
-            background: #f5f2eb;
-            color: #1a1a1a;
-            line-height: 1.7;
+            font-family: 'Newsreader', Georgia, serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.75;
+            font-size: 17px;
+            -webkit-font-smoothing: antialiased;
         }
         .container {
-            max-width: 800px;
+            max-width: 720px;
             margin: 0 auto;
-            padding: 40px 20px;
+            padding: 48px 24px 80px;
         }
+
+        /* Header */
         header {
-            text-align: center;
-            border-bottom: 3px double #1a3a5c;
-            padding-bottom: 24px;
-            margin-bottom: 40px;
+            margin-bottom: 48px;
+        }
+        header .overline {
+            font-family: 'Inter', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-bottom: 8px;
         }
         header h1 {
-            font-size: 28px;
-            font-weight: 700;
-            color: #1a3a5c;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            margin-bottom: 4px;
+            font-size: 32px;
+            font-weight: 600;
+            line-height: 1.2;
+            color: var(--text);
+            margin-bottom: 6px;
         }
         header .date {
-            font-size: 16px;
-            color: #555;
-            font-style: italic;
-        }
-        header .classification {
-            display: inline-block;
-            margin-top: 12px;
-            padding: 4px 16px;
-            border: 1px solid #1a3a5c;
-            font-size: 11px;
-            letter-spacing: 3px;
-            text-transform: uppercase;
-            color: #1a3a5c;
-        }
-        .executive-summary {
-            background: #fff;
-            border-left: 4px solid #1a3a5c;
-            padding: 24px 28px;
-            margin-bottom: 36px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-        }
-        .executive-summary h2 {
+            font-family: 'Inter', sans-serif;
             font-size: 14px;
+            color: var(--text-secondary);
+        }
+        header .divider {
+            width: 48px;
+            height: 2px;
+            background: var(--accent);
+            margin-top: 20px;
+        }
+
+        /* Executive Summary */
+        .executive-summary {
+            padding: 28px 0;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        .executive-summary .label {
+            font-family: 'Inter', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 1.5px;
             text-transform: uppercase;
-            letter-spacing: 2px;
-            color: #1a3a5c;
+            color: var(--text-secondary);
             margin-bottom: 12px;
         }
         .executive-summary p {
-            font-size: 16px;
+            font-size: 18px;
+            line-height: 1.8;
             color: #333;
         }
-        .nav {
-            background: #fff;
-            padding: 16px 24px;
-            margin-bottom: 36px;
-            border: 1px solid #ddd;
+
+        /* Table of Contents */
+        .toc {
+            padding: 20px 0 32px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 40px;
         }
-        .nav h3 {
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: #888;
-            margin-bottom: 8px;
-        }
-        .nav ol {
-            list-style: decimal;
-            padding-left: 20px;
-        }
-        .nav li {
-            margin-bottom: 4px;
-        }
-        .nav a {
-            color: #1a3a5c;
+        .toc-item {
+            display: block;
+            padding: 10px 0;
             text-decoration: none;
-            font-size: 15px;
+            color: var(--text);
+            border-bottom: 1px solid var(--border-light);
+            transition: color 0.15s;
         }
-        .nav a:hover { text-decoration: underline; }
+        .toc-item:last-child { border-bottom: none; }
+        .toc-item:hover { color: var(--accent); }
+        .toc-item .toc-num {
+            font-family: 'Inter', sans-serif;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-right: 12px;
+        }
+        .toc-item .toc-title {
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        /* Story */
         .story {
-            background: #fff;
-            padding: 28px 28px;
-            margin-bottom: 24px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            padding: 40px 0;
+            border-bottom: 1px solid var(--border);
         }
+        .story:last-of-type { border-bottom: none; }
         .story h2 {
-            font-size: 20px;
-            color: #1a3a5c;
-            margin-bottom: 16px;
-            padding-bottom: 8px;
-            border-bottom: 1px solid #e0e0e0;
+            font-size: 24px;
+            font-weight: 600;
+            line-height: 1.3;
+            margin-bottom: 24px;
+            color: var(--text);
         }
-        .story .section-label {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: #888;
-            margin-top: 16px;
+        .story h2 .story-num {
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            display: block;
             margin-bottom: 4px;
+        }
+        .section-label {
+            font-family: 'Inter', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--accent);
+            margin-top: 24px;
+            margin-bottom: 6px;
         }
         .story p {
-            font-size: 15px;
+            font-size: 17px;
             color: #333;
-            margin-bottom: 8px;
-        }
-        .watch-items {
-            background: #f9f7f2;
-            padding: 12px 16px;
-            margin-top: 16px;
-            border-left: 3px solid #c4a35a;
-        }
-        .watch-items h4 {
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: #c4a35a;
-            margin-bottom: 8px;
-        }
-        .watch-items li {
-            font-size: 14px;
-            color: #555;
             margin-bottom: 4px;
-            margin-left: 16px;
         }
+
+        /* Inline Citations */
+        .cite {
+            font-family: 'Inter', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--accent);
+            cursor: pointer;
+            position: relative;
+            vertical-align: super;
+            line-height: 0;
+            margin: 0 1px;
+            text-decoration: none;
+        }
+        .cite:hover { text-decoration: underline; }
+        .cite .tooltip {
+            display: none;
+            position: absolute;
+            bottom: calc(100% + 6px);
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--text);
+            color: #fff;
+            font-size: 12px;
+            font-weight: 400;
+            padding: 8px 12px;
+            border-radius: 6px;
+            white-space: nowrap;
+            max-width: 320px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            z-index: 100;
+            pointer-events: none;
+            line-height: 1.4;
+        }
+        .cite:hover .tooltip { display: block; }
+
+        /* Sources list at bottom of each story */
+        .sources-list {
+            margin-top: 20px;
+            padding: 16px 20px;
+            background: var(--accent-light);
+            border-radius: 8px;
+        }
+        .sources-list .label {
+            font-family: 'Inter', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+        .sources-list a {
+            display: block;
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            color: var(--accent);
+            text-decoration: none;
+            padding: 3px 0;
+            line-height: 1.5;
+        }
+        .sources-list a:hover { text-decoration: underline; }
+        .sources-list .src-num {
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-right: 4px;
+        }
+
         /* Q&A Section */
         .qa-section {
-            margin-top: 20px;
-            padding-top: 16px;
-            border-top: 1px dashed #d0d0d0;
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-light);
         }
-        .qa-section h4 {
+        .qa-section .label {
+            font-family: 'Inter', sans-serif;
             font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 1.5px;
             text-transform: uppercase;
-            letter-spacing: 2px;
-            color: #1a3a5c;
+            color: var(--text-secondary);
             margin-bottom: 10px;
         }
         .qa-input-row {
@@ -155,191 +245,204 @@
         .qa-input {
             flex: 1;
             padding: 10px 14px;
-            font-family: 'Georgia', serif;
+            font-family: 'Inter', sans-serif;
             font-size: 14px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            background: #fafafa;
-            color: #333;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--surface);
+            color: var(--text);
+            transition: border-color 0.15s;
         }
-        .qa-input:focus {
-            outline: none;
-            border-color: #1a3a5c;
-            background: #fff;
-        }
+        .qa-input:focus { outline: none; border-color: var(--accent); }
         .qa-submit {
             padding: 10px 20px;
-            font-family: 'Georgia', serif;
+            font-family: 'Inter', sans-serif;
             font-size: 13px;
-            background: #1a3a5c;
+            font-weight: 600;
+            background: var(--accent);
             color: #fff;
             border: none;
-            border-radius: 4px;
+            border-radius: 8px;
             cursor: pointer;
-            letter-spacing: 1px;
-            text-transform: uppercase;
             white-space: nowrap;
+            transition: background 0.15s;
         }
-        .qa-submit:hover { background: #24507a; }
-        .qa-submit:disabled { background: #999; cursor: not-allowed; }
-        .qa-answer {
-            margin-top: 14px;
-            padding: 16px 18px;
-            background: #f0eee8;
-            border-left: 3px solid #1a3a5c;
-            font-size: 14px;
-            color: #333;
-            line-height: 1.7;
-            display: none;
-        }
-        .qa-answer.visible { display: block; }
-        .qa-answer .qa-label {
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: #1a3a5c;
-            margin-bottom: 8px;
-        }
-        .qa-answer .qa-text { white-space: pre-wrap; }
+        .qa-submit:hover { background: #1d4ed8; }
+        .qa-submit:disabled { background: #aaa; cursor: not-allowed; }
         .qa-loading {
             display: none;
             margin-top: 12px;
+            font-family: 'Inter', sans-serif;
             font-size: 13px;
-            color: #888;
-            font-style: italic;
+            color: var(--text-secondary);
         }
-        .qa-loading.visible { display: block; }
+        .qa-loading.visible { display: flex; align-items: center; gap: 8px; }
+        .qa-loading .spinner {
+            width: 14px; height: 14px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
         .qa-error {
             margin-top: 12px;
             padding: 10px 14px;
-            background: #fdf0f0;
-            border-left: 3px solid #c44;
-            color: #933;
+            background: #fef2f2;
+            border-radius: 8px;
+            color: #b91c1c;
+            font-family: 'Inter', sans-serif;
             font-size: 13px;
             display: none;
         }
         .qa-error.visible { display: block; }
-        .qa-history {
-            margin-top: 10px;
-        }
+        .qa-history { margin-top: 12px; }
         .qa-history-item {
-            margin-bottom: 14px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
         }
         .qa-history-item .qa-q {
+            font-family: 'Inter', sans-serif;
             font-size: 13px;
-            color: #1a3a5c;
             font-weight: 600;
-            margin-bottom: 4px;
+            color: var(--text);
+            padding: 12px 16px;
+            background: var(--bg);
+            border-bottom: 1px solid var(--border-light);
         }
         .qa-history-item .qa-a {
-            padding: 12px 16px;
-            background: #f0eee8;
-            border-left: 3px solid #1a3a5c;
-            font-size: 14px;
-            color: #333;
+            padding: 16px;
+            font-size: 15px;
             line-height: 1.7;
-            white-space: pre-wrap;
+            color: #333;
         }
+        .qa-a p { margin-bottom: 10px; }
+        .qa-a p:last-child { margin-bottom: 0; }
+        .qa-a strong { font-weight: 600; }
+        .qa-a em { font-style: italic; }
+        .qa-a ul, .qa-a ol { margin: 8px 0 8px 20px; }
+        .qa-a li { margin-bottom: 4px; }
+
+        /* Looking Ahead */
         .looking-ahead {
-            background: #1a3a5c;
+            margin-top: 48px;
+            padding: 28px 24px;
+            background: var(--text);
             color: #fff;
-            padding: 24px 28px;
-            margin-top: 36px;
+            border-radius: 12px;
         }
-        .looking-ahead h2 {
-            font-size: 14px;
+        .looking-ahead .label {
+            font-family: 'Inter', sans-serif;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 1.5px;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            color: var(--accent);
             margin-bottom: 12px;
-            color: #c4a35a;
         }
         .looking-ahead li {
-            font-size: 15px;
+            font-size: 16px;
             margin-bottom: 8px;
             margin-left: 20px;
-            color: #e0e0e0;
+            color: #d4d4d8;
         }
+
+        /* Footer */
         footer {
             text-align: center;
-            padding: 32px 0 16px;
+            padding: 40px 0 16px;
+            font-family: 'Inter', sans-serif;
             font-size: 12px;
-            color: #999;
-            border-top: 1px solid #ddd;
-            margin-top: 40px;
+            color: var(--text-secondary);
         }
-        footer a { color: #1a3a5c; }
+        footer a { color: var(--accent); text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
+
         @media print {
             body { background: #fff; }
-            .container { max-width: 100%; padding: 0; }
-            .story, .executive-summary { box-shadow: none; border: 1px solid #ddd; }
-            .nav, .qa-section { display: none; }
+            .qa-section, .toc { display: none; }
         }
         @media (max-width: 600px) {
-            .container { padding: 16px; }
-            header h1 { font-size: 22px; }
-            .story, .executive-summary { padding: 16px; }
+            .container { padding: 24px 16px 60px; }
+            header h1 { font-size: 26px; }
+            .story h2 { font-size: 20px; }
             .qa-input-row { flex-direction: column; }
+            .cite .tooltip { max-width: 200px; white-space: normal; }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
-            <h1>Presidential Daily Briefing</h1>
+            <div class="overline">Geopolitical Intelligence</div>
+            <h1>Daily Briefing</h1>
             <div class="date">{{ briefing.date }}</div>
-            <div class="classification">Geopolitical Intelligence Report</div>
+            <div class="divider"></div>
         </header>
 
         <div class="executive-summary">
-            <h2>Executive Summary</h2>
-            <p>{{ briefing.executive_summary }}</p>
+            <div class="label">Executive Summary</div>
+            <p id="exec-summary-text">{{ briefing.executive_summary }}</p>
         </div>
 
-        <div class="nav">
-            <h3>Today's Briefing</h3>
-            <ol>
+        <div class="toc">
             {% for story in briefing.stories %}
-                <li><a href="#story-{{ loop.index }}">{{ story.headline }}</a></li>
+            <a href="#story-{{ loop.index }}" class="toc-item">
+                <span class="toc-num">{{ "%02d"|format(loop.index) }}</span>
+                <span class="toc-title">{{ story.headline }}</span>
+            </a>
             {% endfor %}
-            </ol>
         </div>
 
         {% for story in briefing.stories %}
         <div class="story" id="story-{{ loop.index }}" data-story-index="{{ loop.index0 }}">
-            <h2>{{ loop.index }}. {{ story.headline }}</h2>
+            <h2>
+                <span class="story-num">{{ "%02d"|format(loop.index) }}</span>
+                {{ story.headline }}
+            </h2>
 
             <div class="section-label">Situation</div>
-            <p>{{ story.situation }}</p>
+            <p class="citable">{{ story.situation }}</p>
 
             <div class="section-label">Context &amp; Analysis</div>
-            <p>{{ story.context_and_analysis }}</p>
+            <p class="citable">{{ story.context_and_analysis }}</p>
 
             <div class="section-label">Implications</div>
-            <p>{{ story.implications }}</p>
+            <p class="citable">{{ story.implications }}</p>
 
-            {% if story.watch_items %}
-            <div class="watch-items">
-                <h4>Watch Items</h4>
-                <ul>
-                {% for item in story.watch_items %}
-                    <li>{{ item }}</li>
+            {% if story.source_articles or story.think_tank_refs %}
+            <div class="sources-list">
+                <div class="label">Sources</div>
+                {% set ns = namespace(idx=1) %}
+                {% for src in story.source_articles %}
+                <a href="{{ src.url }}" target="_blank" rel="noopener">
+                    <span class="src-num">[{{ ns.idx }}]</span> {{ src.source_name }}: {{ src.title }}
+                </a>
+                {% set ns.idx = ns.idx + 1 %}
                 {% endfor %}
-                </ul>
+                {% for src in story.think_tank_refs %}
+                <a href="{{ src.url }}" target="_blank" rel="noopener">
+                    <span class="src-num">[{{ ns.idx }}]</span> {{ src.source_name }}: {{ src.title }}
+                </a>
+                {% set ns.idx = ns.idx + 1 %}
+                {% endfor %}
             </div>
             {% endif %}
 
-            {# Embedded context JSON for Q&A grounding (pre-serialized in Python) #}
+            {# Embedded context JSON for Q&A grounding #}
             {% autoescape false %}
             <script type="application/json" class="story-context">{{ story_contexts[loop.index0] }}</script>
             {% endautoescape %}
 
             <div class="qa-section">
-                <h4>Ask a Follow-Up</h4>
+                <div class="label">Ask a Follow-Up</div>
                 <div class="qa-input-row">
-                    <input type="text" class="qa-input" placeholder="Ask about the background, causes, or implications of this story...">
+                    <input type="text" class="qa-input" placeholder="Why is this happening? What are the economic drivers?">
                     <button class="qa-submit" onclick="askQuestion(this)">Ask</button>
                 </div>
-                <div class="qa-loading">Analyzing sources and searching the web...</div>
+                <div class="qa-loading"><div class="spinner"></div> Analyzing sources...</div>
                 <div class="qa-error"></div>
                 <div class="qa-history"></div>
             </div>
@@ -348,7 +451,7 @@
 
         {% if briefing.looking_ahead %}
         <div class="looking-ahead">
-            <h2>Looking Ahead</h2>
+            <div class="label">Looking Ahead</div>
             <ul>
             {% for item in briefing.looking_ahead %}
                 <li>{{ item }}</li>
@@ -366,6 +469,56 @@
     <script>
     const API_URL = "https://pdb-qa.marco-eterno.workers.dev";
 
+    // Convert [N] citations into interactive links with tooltips
+    document.addEventListener("DOMContentLoaded", () => {
+        document.querySelectorAll(".story").forEach(story => {
+            const sourceEls = story.querySelectorAll(".sources-list a");
+            const sources = Array.from(sourceEls).map(a => ({
+                title: a.textContent.replace(/^\[\d+\]\s*/, "").trim(),
+                url: a.href,
+            }));
+            if (!sources.length) return;
+
+            story.querySelectorAll(".citable").forEach(p => {
+                p.innerHTML = p.innerHTML.replace(/\[(\d+)\]/g, (match, num) => {
+                    const idx = parseInt(num) - 1;
+                    const src = sources[idx];
+                    if (!src) return match;
+                    const tooltip = src.title.length > 60
+                        ? src.title.substring(0, 60) + "..."
+                        : src.title;
+                    return `<a class="cite" href="${src.url}" target="_blank" rel="noopener">[${num}]<span class="tooltip">${escapeHtml(tooltip)}</span></a>`;
+                });
+            });
+        });
+    });
+
+    // Simple markdown-ish rendering for Q&A answers
+    function renderAnswer(text) {
+        // Split into paragraphs
+        const paragraphs = text.split(/\n{2,}/);
+        return paragraphs.map(p => {
+            let html = escapeHtml(p.trim());
+            // Bold
+            html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+            // Italic
+            html = html.replace(/\*(.+?)\*/g, "<em>$1</em>");
+            // Bullet lists
+            if (html.match(/^[-•]\s/m)) {
+                const items = html.split(/\n/).filter(l => l.trim());
+                const lis = items.map(l => `<li>${l.replace(/^[-•]\s*/, "")}</li>`).join("");
+                return `<ul>${lis}</ul>`;
+            }
+            // Numbered lists
+            if (html.match(/^\d+\.\s/m)) {
+                const items = html.split(/\n/).filter(l => l.trim());
+                const lis = items.map(l => `<li>${l.replace(/^\d+\.\s*/, "")}</li>`).join("");
+                return `<ol>${lis}</ol>`;
+            }
+            return `<p>${html}</p>`;
+        }).join("");
+    }
+
     async function askQuestion(btn) {
         const story = btn.closest(".story");
         const input = story.querySelector(".qa-input");
@@ -373,29 +526,16 @@
         const errorEl = story.querySelector(".qa-error");
         const history = story.querySelector(".qa-history");
         const question = input.value.trim();
-
         if (!question) return;
 
-        // UI state
         btn.disabled = true;
         loading.classList.add("visible");
         errorEl.classList.remove("visible");
         input.value = "";
 
-        // Get embedded story context
         const contextEl = story.querySelector(".story-context");
         let storyContext = {};
-        try {
-            storyContext = JSON.parse(contextEl.textContent);
-        } catch (e) {
-            // Fallback: extract text from the story section
-            storyContext = {
-                headline: story.querySelector("h2").textContent,
-                situation: story.querySelectorAll("p")[0]?.textContent || "",
-                context_and_analysis: story.querySelectorAll("p")[1]?.textContent || "",
-                implications: story.querySelectorAll("p")[2]?.textContent || "",
-            };
-        }
+        try { storyContext = JSON.parse(contextEl.textContent); } catch (e) {}
 
         try {
             const res = await fetch(API_URL + "/api/ask", {
@@ -403,38 +543,33 @@
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ question, story_context: storyContext }),
             });
-
             if (!res.ok) {
-                const errData = await res.json().catch(() => ({}));
-                throw new Error(errData.error || `Request failed (${res.status})`);
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.error || `Request failed (${res.status})`);
             }
-
             const data = await res.json();
-
-            // Add Q&A to history
             const item = document.createElement("div");
             item.className = "qa-history-item";
             item.innerHTML =
-                '<div class="qa-q">Q: ' + escapeHtml(question) + '</div>' +
-                '<div class="qa-a">' + escapeHtml(data.answer) + '</div>';
+                `<div class="qa-q">${escapeHtml(question)}</div>` +
+                `<div class="qa-a">${renderAnswer(data.answer)}</div>`;
             history.appendChild(item);
         } catch (err) {
-            errorEl.textContent = "Error: " + err.message;
+            errorEl.textContent = err.message;
             errorEl.classList.add("visible");
-            input.value = question; // restore so user can retry
+            input.value = question;
         } finally {
             btn.disabled = false;
             loading.classList.remove("visible");
         }
     }
 
-    function escapeHtml(text) {
+    function escapeHtml(t) {
         const d = document.createElement("div");
-        d.textContent = text;
+        d.textContent = t;
         return d.innerHTML;
     }
 
-    // Allow Enter key to submit
     document.querySelectorAll(".qa-input").forEach(input => {
         input.addEventListener("keydown", e => {
             if (e.key === "Enter") {
