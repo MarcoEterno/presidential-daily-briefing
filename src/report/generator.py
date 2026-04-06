@@ -120,22 +120,28 @@ You rewrite intelligence briefing text, grounding it in provided source document
 Rules: \
 1. Output ONLY the rewritten text — no commentary, no preamble, no meta-discussion. \
 2. Keep the three section headers exactly: SITUATION: / CONTEXT AND ANALYSIS: / IMPLICATIONS: \
-3. Keep the same facts and tone as the input. \
-4. If a fact is supported by the source documents, include it. If not, still include it but it won't get a citation — that's fine. \
-5. Do NOT say things like "the document does not contain" or "I should clarify"."""
+3. Keep the SAME facts, structure, and topic as the input. Do NOT change the story's topic. \
+4. If a fact is supported by the source documents, include it. If not, still include it without a citation — that's fine. \
+5. Do NOT say things like "the document does not contain" or "I should clarify". \
+6. CRITICALLY IMPORTANT: For each fact, cite EVERY source document that supports it, not just one. \
+If three documents report the same event, cite all three. Write claims so they draw from \
+ALL relevant documents, not just the first one."""
 
 GROUNDING_PROMPT = """\
-Rewrite this briefing grounded in the source documents. Output ONLY the three sections, nothing else.
+Rewrite this briefing grounded in the source documents. Output ONLY the three sections, nothing else. \
+For each fact, cite ALL source documents that contain supporting evidence — not just one.
 
 {story_text}"""
 
 
 async def _extract_source_docs(
     enriched: EnrichedStory,
-) -> tuple[list[dict], list[SourceRef]]:
-    """Extract article text and build document blocks for the citations API."""
+) -> tuple[list[dict], list[SourceRef], list[str]]:
+    """Extract article text and build document blocks for the citations API.
+    Returns (document_blocks, source_map, raw_texts) — raw_texts used for cross-citation."""
     documents: list[dict] = []
     source_map: list[SourceRef] = []
+    raw_texts: list[str] = []
 
     all_sources = []
     for a in enriched.articles[:4]:
@@ -143,7 +149,6 @@ async def _extract_source_docs(
     for r in enriched.think_tank_references[:3]:
         all_sources.append((r.title, r.url, r.source_name))
 
-    # Extract texts in parallel
     async def _extract(title, url, source_name):
         text = await asyncio.to_thread(extract_article_text, url)
         return title, url, source_name, text
@@ -159,31 +164,37 @@ async def _extract_source_docs(
         title, url, source_name, text = result
         if not text:
             continue
+        truncated = truncate_text(text, 4000)
         documents.append({
             "type": "document",
             "source": {
                 "type": "text",
                 "media_type": "text/plain",
-                "data": truncate_text(text, 4000),
+                "data": truncated,
             },
             "title": f"{source_name}: {title}",
             "citations": {"enabled": True},
         })
         source_map.append(SourceRef(title=title, url=url, source_name=source_name))
+        raw_texts.append(truncated.lower())
 
-    return documents, source_map
+    return documents, source_map, raw_texts
 
 
 def _parse_citation_response(
-    content_blocks: list, source_map: list[SourceRef]
+    content_blocks: list,
+    source_map: list[SourceRef],
+    raw_texts: list[str],
 ) -> tuple[str, list[SourceRef]]:
     """
     Walk the response content blocks produced by the citations API.
     Build a single string with [N] markers inserted after every cited span.
-    Return the string and the ordered list of sources actually cited.
+
+    Cross-citation: when the API cites document X, also check whether the
+    cited_text appears in documents Y, Z and add those citations too.
+    This ensures facts reported by multiple outlets get multi-source tags.
     """
     result = ""
-    used_indices: set[int] = set()
 
     for block in content_blocks:
         if not hasattr(block, "text"):
@@ -191,17 +202,27 @@ def _parse_citation_response(
         result += block.text
         citations = getattr(block, "citations", None) or []
         if citations:
-            indices = sorted({
-                c.document_index
-                for c in citations
-                if hasattr(c, "document_index")
-            })
-            for idx in indices:
-                if idx < len(source_map):
-                    used_indices.add(idx)
-                    result += f" [{idx + 1}]"
+            all_indices: set[int] = set()
+            for c in citations:
+                if not hasattr(c, "document_index"):
+                    continue
+                all_indices.add(c.document_index)
+                # Cross-match: check other docs for the same cited text
+                cited_text = getattr(c, "cited_text", "")
+                if cited_text and len(cited_text) > 20:
+                    snippet = cited_text[:80].lower()
+                    for other_idx, doc_text in enumerate(raw_texts):
+                        if other_idx != c.document_index and snippet in doc_text:
+                            all_indices.add(other_idx)
 
-    # Build the ordered source list (all sources, so [N] stays consistent)
+            markers = "".join(
+                f"[{idx + 1}]"
+                for idx in sorted(all_indices)
+                if idx < len(source_map)
+            )
+            if markers:
+                result += f" {markers}"
+
     return result, source_map
 
 
@@ -243,7 +264,7 @@ async def _ground_single_story(
     enriched: EnrichedStory,
 ) -> StoryBrief:
     """Ground one story against its source documents using the citations API."""
-    documents, source_map = await _extract_source_docs(enriched)
+    documents, source_map, raw_texts = await _extract_source_docs(enriched)
     logger.info(f"Extracted {len(documents)} source docs for '{story.headline[:50]}...'")
     if not documents:
         logger.warning(f"No source text extracted for '{story.headline}' — skipping grounding")
@@ -281,7 +302,7 @@ async def _ground_single_story(
         f"{len(response.content)} blocks"
     )
 
-    cited_text, cited_sources = _parse_citation_response(response.content, source_map)
+    cited_text, cited_sources = _parse_citation_response(response.content, source_map, raw_texts)
     sections = _split_sections(cited_text)
 
     if sections.get("situation"):
