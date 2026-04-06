@@ -135,6 +135,111 @@
             margin-bottom: 4px;
             margin-left: 16px;
         }
+        /* Q&A Section */
+        .qa-section {
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px dashed #d0d0d0;
+        }
+        .qa-section h4 {
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #1a3a5c;
+            margin-bottom: 10px;
+        }
+        .qa-input-row {
+            display: flex;
+            gap: 8px;
+        }
+        .qa-input {
+            flex: 1;
+            padding: 10px 14px;
+            font-family: 'Georgia', serif;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: #fafafa;
+            color: #333;
+        }
+        .qa-input:focus {
+            outline: none;
+            border-color: #1a3a5c;
+            background: #fff;
+        }
+        .qa-submit {
+            padding: 10px 20px;
+            font-family: 'Georgia', serif;
+            font-size: 13px;
+            background: #1a3a5c;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+        .qa-submit:hover { background: #24507a; }
+        .qa-submit:disabled { background: #999; cursor: not-allowed; }
+        .qa-answer {
+            margin-top: 14px;
+            padding: 16px 18px;
+            background: #f0eee8;
+            border-left: 3px solid #1a3a5c;
+            font-size: 14px;
+            color: #333;
+            line-height: 1.7;
+            display: none;
+        }
+        .qa-answer.visible { display: block; }
+        .qa-answer .qa-label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: #1a3a5c;
+            margin-bottom: 8px;
+        }
+        .qa-answer .qa-text { white-space: pre-wrap; }
+        .qa-loading {
+            display: none;
+            margin-top: 12px;
+            font-size: 13px;
+            color: #888;
+            font-style: italic;
+        }
+        .qa-loading.visible { display: block; }
+        .qa-error {
+            margin-top: 12px;
+            padding: 10px 14px;
+            background: #fdf0f0;
+            border-left: 3px solid #c44;
+            color: #933;
+            font-size: 13px;
+            display: none;
+        }
+        .qa-error.visible { display: block; }
+        .qa-history {
+            margin-top: 10px;
+        }
+        .qa-history-item {
+            margin-bottom: 14px;
+        }
+        .qa-history-item .qa-q {
+            font-size: 13px;
+            color: #1a3a5c;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .qa-history-item .qa-a {
+            padding: 12px 16px;
+            background: #f0eee8;
+            border-left: 3px solid #1a3a5c;
+            font-size: 14px;
+            color: #333;
+            line-height: 1.7;
+            white-space: pre-wrap;
+        }
         .looking-ahead {
             background: #1a3a5c;
             color: #fff;
@@ -167,12 +272,13 @@
             body { background: #fff; }
             .container { max-width: 100%; padding: 0; }
             .story, .executive-summary { box-shadow: none; border: 1px solid #ddd; }
-            .nav { display: none; }
+            .nav, .qa-section { display: none; }
         }
         @media (max-width: 600px) {
             .container { padding: 16px; }
             header h1 { font-size: 22px; }
             .story, .executive-summary { padding: 16px; }
+            .qa-input-row { flex-direction: column; }
         }
     </style>
 </head>
@@ -199,7 +305,7 @@
         </div>
 
         {% for story in briefing.stories %}
-        <div class="story" id="story-{{ loop.index }}">
+        <div class="story" id="story-{{ loop.index }}" data-story-index="{{ loop.index0 }}">
             <h2>{{ loop.index }}. {{ story.headline }}</h2>
 
             <div class="section-label">Situation</div>
@@ -221,6 +327,22 @@
                 </ul>
             </div>
             {% endif %}
+
+            {# Embedded context JSON for Q&A grounding (pre-serialized in Python) #}
+            {% autoescape false %}
+            <script type="application/json" class="story-context">{{ story_contexts[loop.index0] }}</script>
+            {% endautoescape %}
+
+            <div class="qa-section">
+                <h4>Ask a Follow-Up</h4>
+                <div class="qa-input-row">
+                    <input type="text" class="qa-input" placeholder="Ask about the background, causes, or implications of this story...">
+                    <button class="qa-submit" onclick="askQuestion(this)">Ask</button>
+                </div>
+                <div class="qa-loading">Analyzing sources and searching the web...</div>
+                <div class="qa-error"></div>
+                <div class="qa-history"></div>
+            </div>
         </div>
         {% endfor %}
 
@@ -240,5 +362,87 @@
             <p><a href="archive/">View Archive</a></p>
         </footer>
     </div>
+
+    <script>
+    const API_URL = "https://pdb-qa.marcoeterno.workers.dev";
+
+    async function askQuestion(btn) {
+        const story = btn.closest(".story");
+        const input = story.querySelector(".qa-input");
+        const loading = story.querySelector(".qa-loading");
+        const errorEl = story.querySelector(".qa-error");
+        const history = story.querySelector(".qa-history");
+        const question = input.value.trim();
+
+        if (!question) return;
+
+        // UI state
+        btn.disabled = true;
+        loading.classList.add("visible");
+        errorEl.classList.remove("visible");
+        input.value = "";
+
+        // Get embedded story context
+        const contextEl = story.querySelector(".story-context");
+        let storyContext = {};
+        try {
+            storyContext = JSON.parse(contextEl.textContent);
+        } catch (e) {
+            // Fallback: extract text from the story section
+            storyContext = {
+                headline: story.querySelector("h2").textContent,
+                situation: story.querySelectorAll("p")[0]?.textContent || "",
+                context_and_analysis: story.querySelectorAll("p")[1]?.textContent || "",
+                implications: story.querySelectorAll("p")[2]?.textContent || "",
+            };
+        }
+
+        try {
+            const res = await fetch(API_URL + "/api/ask", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ question, story_context: storyContext }),
+            });
+
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                throw new Error(errData.error || `Request failed (${res.status})`);
+            }
+
+            const data = await res.json();
+
+            // Add Q&A to history
+            const item = document.createElement("div");
+            item.className = "qa-history-item";
+            item.innerHTML =
+                '<div class="qa-q">Q: ' + escapeHtml(question) + '</div>' +
+                '<div class="qa-a">' + escapeHtml(data.answer) + '</div>';
+            history.appendChild(item);
+        } catch (err) {
+            errorEl.textContent = "Error: " + err.message;
+            errorEl.classList.add("visible");
+            input.value = question; // restore so user can retry
+        } finally {
+            btn.disabled = false;
+            loading.classList.remove("visible");
+        }
+    }
+
+    function escapeHtml(text) {
+        const d = document.createElement("div");
+        d.textContent = text;
+        return d.innerHTML;
+    }
+
+    // Allow Enter key to submit
+    document.querySelectorAll(".qa-input").forEach(input => {
+        input.addEventListener("keydown", e => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                input.closest(".qa-section").querySelector(".qa-submit").click();
+            }
+        });
+    });
+    </script>
 </body>
 </html>

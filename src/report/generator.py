@@ -8,7 +8,7 @@ from jinja2 import Environment, FileSystemLoader
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from src.config.settings import settings
-from src.models import EnrichedStory, Briefing, StoryBrief
+from src.models import EnrichedStory, Briefing, StoryBrief, SourceRef
 
 logger = logging.getLogger(__name__)
 
@@ -93,11 +93,29 @@ async def _generate_report_content(stories: list[EnrichedStory], date: str) -> d
     return json.loads(text)
 
 
+def _build_story_contexts(briefing: Briefing) -> list[str]:
+    """Pre-serialize story context JSON for embedding in HTML."""
+    contexts = []
+    for story in briefing.stories:
+        ctx = {
+            "headline": story.headline,
+            "situation": story.situation,
+            "context_and_analysis": story.context_and_analysis,
+            "implications": story.implications,
+            "deep_context": story.deep_context,
+            "source_articles": [s.model_dump() for s in story.source_articles],
+            "think_tank_refs": [s.model_dump() for s in story.think_tank_refs],
+        }
+        contexts.append(json.dumps(ctx))
+    return contexts
+
+
 def _render_html(briefing: Briefing, template_name: str) -> str:
     templates_dir = Path(__file__).parent.parent.parent / "templates"
     env = Environment(loader=FileSystemLoader(str(templates_dir)), autoescape=True)
     template = env.get_template(template_name)
-    return template.render(briefing=briefing)
+    story_contexts = _build_story_contexts(briefing)
+    return template.render(briefing=briefing, story_contexts=story_contexts)
 
 
 def _render_text(briefing: Briefing) -> str:
@@ -151,13 +169,38 @@ async def generate_briefing(enriched_stories: list[EnrichedStory]) -> Briefing:
     report_data = await _generate_report_content(enriched_stories, date)
 
     story_briefs = []
-    for s in report_data.get("stories", []):
+    for i, s in enumerate(report_data.get("stories", [])):
+        # Re-attach source data from enriched stories for Q&A grounding
+        source_articles = []
+        think_tank_refs = []
+        deep_context = ""
+        if i < len(enriched_stories):
+            es = enriched_stories[i]
+            source_articles = [
+                SourceRef(title=a.title, url=a.url, source_name=a.source_name)
+                for a in es.articles[:5]
+            ]
+            think_tank_refs = [
+                SourceRef(title=r.title, url=r.url, source_name=r.source_name)
+                for r in es.think_tank_references
+            ]
+            deep_context = (
+                f"Situation: {es.situation}\n"
+                f"Historical Context: {es.historical_context}\n"
+                f"Economic Factors: {es.economic_factors}\n"
+                f"Strategic Implications: {es.strategic_implications}\n"
+                f"Outlook: {es.outlook}"
+            )
+
         story_briefs.append(StoryBrief(
             headline=s.get("headline", ""),
             situation=s.get("situation", ""),
             context_and_analysis=s.get("context_and_analysis", ""),
             implications=s.get("implications", ""),
             watch_items=s.get("watch_items", []),
+            source_articles=source_articles,
+            think_tank_refs=think_tank_refs,
+            deep_context=deep_context,
         ))
 
     briefing = Briefing(

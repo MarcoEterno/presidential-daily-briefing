@@ -47,12 +47,22 @@ class EnrichedStory(BaseModel):
     think_tank_references: list[ThinkTankReference] = Field(default_factory=list)
 
 
+class SourceRef(BaseModel):
+    title: str
+    url: str
+    source_name: str
+
+
 class StoryBrief(BaseModel):
     headline: str
     situation: str
     context_and_analysis: str
     implications: str
     watch_items: list[str] = Field(default_factory=list)
+    # Source data for Q&A grounding
+    source_articles: list[SourceRef] = Field(default_factory=list)
+    think_tank_refs: list[SourceRef] = Field(default_factory=list)
+    deep_context: str = ""  # Concatenated analysis for Q&A grounding
 
 
 class Briefing(BaseModel):
